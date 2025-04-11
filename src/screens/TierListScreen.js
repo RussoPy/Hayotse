@@ -29,7 +29,9 @@ export default function TierListScreen({ route }) {
   const handleTierCountToggle = () => {
     const allTiered = tieredPlayers.flat();
     setUnassigned(prev => [...prev, ...allTiered]);
-    setTierCount(prev => (prev === 5 ? 10 : 5));
+    const newCount = tierCount === 5 ? 10 : 5;
+    setTieredPlayers(Array.from({ length: newCount }, () => []));
+    setTierCount(newCount);
   };
 
   useEffect(() => {
@@ -89,47 +91,38 @@ export default function TierListScreen({ route }) {
       </View>
 
       <View className="w-full space-y-4 pb-16">
-  {tieredPlayers.map((tier, i) => {
-    const displayTier = tierCount - i;
-    return (
-      <View key={i} className="flex-row items-start space-x-3">
-        <View className="w-6 items-center pt-2">
-          <Text className="text-white font-bold text-lg">{displayTier}</Text>
-        </View>
-        <View className="flex-1 flex-row flex-wrap gap-2 bg-zinc-800 min-h-[60px] px-2 py-2 rounded-xl border border-zinc-700">
-          {tier.length === 0 ? (
-            <Text className="text-gray-400 italic">Drop players here</Text>
-          ) : (
-            tier.map(player => renderBadge(player, i))
-          )}
-        </View>
+        {tieredPlayers.map((tier, i) => {
+          const displayTier = tierCount - i;
+          return (
+            <View key={i} className="flex-row items-start space-x-3">
+              <View className="w-6 items-center pt-2">
+                <Text className="text-white font-bold text-lg">{displayTier}</Text>
+              </View>
+              <View className="flex-1 flex-row flex-wrap gap-2 bg-zinc-800 min-h-[60px] px-2 py-2 rounded-xl border border-zinc-700">
+                {tier.length === 0 ? (
+                  <Text className="text-gray-400 italic">Drop players here</Text>
+                ) : (
+                  tier.map(player => renderBadge(player, i))
+                )}
+              </View>
+            </View>
+          );
+        })}
+
+        {allAssigned && (
+          <TouchableOpacity
+            onPress={() =>
+              navigation.navigate('TeamSetup', {
+                allPlayers: tieredPlayers.flat(),
+                tieredPlayers: tieredPlayers,
+              })
+            }
+            className="bg-amber-400 mt-8 mb-16 py-3 px-6 rounded-xl self-center"
+          >
+            <Text className="text-black font-bold text-lg">NEXT</Text>
+          </TouchableOpacity>
+        )}
       </View>
-    );
-  })}
-
-  {/* ✅ Add this NEXT button after all players are assigned */}
-  {unassigned.length === 0 && (
-    <TouchableOpacity
-    onPress={() =>
-      navigation.navigate('TeamSetup', {
-        allPlayers: tieredPlayers.flat(),
-        tieredPlayers: tieredPlayers,
-      })
-    }
-      className="bg-amber-400 rounded-xl py-3 px-6 mt-8 mb-16 self-center"
-    >
-      <Text className="text-black font-bold text-lg">NEXT</Text>
-    </TouchableOpacity>
-  )}
-</View>
-
-      <TouchableOpacity
-        disabled={!allAssigned}
-        onPress={() => navigation.navigate('TeamSetup', { tieredPlayers })}
-        className={`mt-6 mb-10 rounded-xl py-3 px-6 ${allAssigned ? 'bg-amber-400' : 'bg-zinc-700'} self-center`}
-      >
-        <Text className="text-black font-bold">NEXT</Text>
-      </TouchableOpacity>
 
       <Modal
         transparent
