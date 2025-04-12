@@ -3,6 +3,7 @@
 // - Shuffles and distributes players into balanced teams
 // - Shows team cards and average score
 // - Supports scrambling and WhatsApp sharing
+// - Randomly assigns one player per team as goalkeeper (🧤)
 
 import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
@@ -12,6 +13,12 @@ import * as Linking from 'expo-linking';
 
 function assignTierScore(player, tieredPlayers) {
   if (player.score) return player.score;
+
+  const isUnknownTier = tieredPlayers.length > 0 && tieredPlayers[tieredPlayers.length - 1].some(p => p.id === player.id);
+  if (isUnknownTier) {
+    const actualTierCount = tieredPlayers.length - 1;
+    return Math.floor(actualTierCount / 2) + 1;
+  }
 
   const tiers = tieredPlayers.length;
   for (let i = 0; i < tiers; i++) {
@@ -50,9 +57,18 @@ export default function TeamResultsScreen() {
       index++;
     }
 
-    const isBalanced = newTeams.every(t => t.players.length === playersPerTeam);
+    // Assign goalkeeper
+    const teamsWithGoalie = newTeams.map(team => {
+      const randomIndex = Math.floor(Math.random() * team.players.length);
+      return {
+        ...team,
+        goalieId: team.players[randomIndex].id,
+      };
+    });
+
+    const isBalanced = teamsWithGoalie.every(t => t.players.length === playersPerTeam);
     if (isBalanced) {
-      setTeams(newTeams.map(t => t.players));
+      setTeams(teamsWithGoalie);
     } else if (retry < 5) {
       buildBalancedTeams(retry + 1);
     } else {
@@ -65,8 +81,9 @@ export default function TeamResultsScreen() {
     let message = '🏆 Team Results:\n';
     teams.forEach((team, index) => {
       message += `\nTeam ${index + 1}:\n`;
-      team.forEach(player => {
-        message += `- ${player.name}\n`;
+      team.players.forEach(player => {
+        const isGoalie = player.id === team.goalieId;
+        message += `- ${player.name}${isGoalie ? ' 🧤' : ''}\n`;
       });
     });
     Linking.openURL(`whatsapp://send?text=${encodeURIComponent(message)}`);
@@ -102,7 +119,7 @@ export default function TeamResultsScreen() {
           <Text className="text-gray-400 italic text-center mt-12">No teams to display. Make sure players divide evenly.</Text>
         ) : (
           teams.map((team, i) => {
-            const average = team.reduce((sum, p) => sum + p.score, 0) / team.length;
+            const average = team.players.reduce((sum, p) => sum + p.score, 0) / team.players.length;
             return (
               <Animated.View
                 key={`${scrambleKey}-${i}`}
@@ -112,9 +129,9 @@ export default function TeamResultsScreen() {
               >
                 <Text className="text-white font-bold text-lg text-center mb-1">Team {i + 1}</Text>
                 <Text className="text-sm text-gray-400 text-center mb-2">Avg Score: {average.toFixed(2)}</Text>
-                {team.map((player) => (
+                {team.players.map((player) => (
                   <Text key={player.id} className="text-white text-center">
-                    • {player.name}
+                    • {player.name}{player.id === team.goalieId ? ' 🧤' : ''}
                   </Text>
                 ))}
               </Animated.View>
