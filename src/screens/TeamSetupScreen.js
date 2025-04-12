@@ -1,3 +1,4 @@
+/*TeamSetupScreen.js*/ 
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';

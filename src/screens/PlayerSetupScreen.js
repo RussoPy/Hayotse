@@ -1,3 +1,4 @@
+/*PlayerSetupScreen.js*/ 
 import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,6 +7,7 @@ export default function PlayerSetupScreen({ navigation }) {
   const [players, setPlayers] = useState([]);
   const [name, setName] = useState('');
   const [editId, setEditId] = useState(null);
+  let unknownCount = 1;
 
   const COLORS = [
     'bg-red-400', 'bg-blue-400', 'bg-green-400', 'bg-yellow-400', 'bg-purple-400',
@@ -27,6 +29,17 @@ export default function PlayerSetupScreen({ navigation }) {
       setPlayers(prev => [...prev, newPlayer]);
     }
     setName('');
+  };
+
+  const addUnknownPlayer = () => {
+    const count = players.filter(p => p.name.startsWith('Unknown')).length + 1;
+    const newPlayer = {
+      id: Date.now().toString(),
+      name: `Unknown ${count}`,
+      color: COLORS[players.length % COLORS.length],
+      key: Date.now().toString(),
+    };
+    setPlayers(prev => [...prev, newPlayer]);
   };
 
   const removePlayer = (id) => {
@@ -53,7 +66,7 @@ export default function PlayerSetupScreen({ navigation }) {
     <View className="flex-1 bg-zinc-900 px-4 pt-10 pb-6">
       <Text className="text-3xl font-bold text-amber-400 mb-10 text-center">Adding players</Text>
 
-      <View className="flex-row items-center mb-6 gap-2">
+      <View className="flex-row items-center mb-4 gap-2">
         <TextInput
           className="flex-1 bg-white text-black rounded-xl px-4 py-2"
           placeholder="Enter player name"
@@ -68,6 +81,12 @@ export default function PlayerSetupScreen({ navigation }) {
         >
           <Text className="text-black font-semibold">{editId ? 'Update' : 'Add'}</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          onPress={addUnknownPlayer}
+          className="bg-gray-300 px-3 py-2 rounded-xl"
+        >
+          <Text className="text-black font-semibold">+ Unknown</Text>
+        </TouchableOpacity>
       </View>
 
       <Text className="text-white text-base mb-2">({players.length})</Text>
@@ -78,7 +97,10 @@ export default function PlayerSetupScreen({ navigation }) {
         contentContainerStyle={{ gap: 12, paddingBottom: 80 }}
         renderItem={({ item }) => (
           <View className="flex-row justify-between items-center bg-zinc-800 p-4 rounded-xl">
-            <Text className="text-white text-lg">{item.name}</Text>
+            <View className="flex-row items-center gap-2">
+  <Ionicons name="person-circle-outline" size={24} color="white" />
+  <Text className="text-white text-lg">{item.name}</Text>
+</View>
             <View className="flex-row gap-4">
               <TouchableOpacity onPress={() => editPlayer(item)}>
                 <Ionicons name="pencil" size={20} color="white" />

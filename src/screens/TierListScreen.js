@@ -1,3 +1,4 @@
+/*TeamListScreen.js*/ 
 import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -23,20 +24,27 @@ export default function TierListScreen({ route }) {
       color: COLORS[i % COLORS.length],
       key: p.id.toString(),
     }));
-    setUnassigned(colored);
-  }, [players]);
+
+    const newTiers = Array.from({ length: tierCount + 1 }, () => []);
+    const unknowns = colored.filter(p => p.name.toLowerCase().startsWith('unknown'));
+    const known = colored.filter(p => !p.name.toLowerCase().startsWith('unknown'));
+
+    const middleValue = Math.floor(tierCount / 2) + 1;
+    unknowns.forEach(p => {
+      newTiers[tierCount].push({ ...p, score: middleValue });
+    });
+
+    setTieredPlayers(newTiers);
+    setUnassigned(known);
+  }, [players, tierCount]);
 
   const handleTierCountToggle = () => {
     const allTiered = tieredPlayers.flat();
     setUnassigned(prev => [...prev, ...allTiered]);
     const newCount = tierCount === 5 ? 10 : 5;
-    setTieredPlayers(Array.from({ length: newCount }, () => []));
+    setTieredPlayers(Array.from({ length: newCount + 1 }, () => []));
     setTierCount(newCount);
   };
-
-  useEffect(() => {
-    setTieredPlayers(Array.from({ length: tierCount }, () => []));
-  }, [tierCount]);
 
   const assignToTier = (player, targetTierIndex) => {
     setUnassigned(prev => prev.filter(p => p.key !== player.key));
@@ -94,8 +102,10 @@ export default function TierListScreen({ route }) {
 
       <View className="w-full space-y-4 pb-16">
         {tieredPlayers.map((tier, i) => {
-          const displayTier = tierCount - i;
           const isTopTier = i === 0;
+          const isUnknownTier = i === tierCount;
+          const displayTier = isUnknownTier ? '?' : tierCount - i;
+
           return (
             <View key={i} className="flex-row items-start space-x-3">
               <View className="w-6 items-center pt-2">
@@ -103,6 +113,7 @@ export default function TierListScreen({ route }) {
               </View>
               <View className="flex-1 flex-row flex-wrap gap-2 bg-zinc-800 min-h-[60px] px-2 py-2 rounded-xl border border-zinc-700">
                 {isTopTier && <Text className="text-xs text-gray-400 mb-1">(Highest value)</Text>}
+                {isUnknownTier && <Text className="text-xs text-gray-400 mb-1">(Uncertain value)</Text>}
                 {tier.length === 0 ? (
                   <Text className="text-gray-400 italic">Drop here</Text>
                 ) : (
@@ -118,7 +129,7 @@ export default function TierListScreen({ route }) {
             onPress={() =>
               navigation.navigate('TeamSetup', {
                 allPlayers: tieredPlayers.flat(),
-                tieredPlayers: tieredPlayers,
+                tieredPlayers,
               })
             }
             className="bg-amber-400 mt-8 mb-16 py-3 px-6 rounded-xl self-center"
@@ -140,13 +151,15 @@ export default function TierListScreen({ route }) {
               Assign {selectedPlayer?.player?.name}
             </Text>
             <View className="flex flex-wrap flex-row justify-center gap-2">
-              {Array.from({ length: tierCount }, (_, i) => (
+              {Array.from({ length: tierCount + 1 }, (_, i) => (
                 <TouchableOpacity
                   key={i}
                   className="bg-amber-400 px-4 py-2 rounded-lg"
                   onPress={() => assignToTier(selectedPlayer.player, i)}
                 >
-                  <Text className="text-black font-bold">Tier {tierCount - i}</Text>
+                  <Text className="text-black font-bold">
+                    {i === tierCount ? '?' : `Tier ${tierCount - i}`}
+                  </Text>
                 </TouchableOpacity>
               ))}
               {selectedPlayer?.fromTier !== null && (

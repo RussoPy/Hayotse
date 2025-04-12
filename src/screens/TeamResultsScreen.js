@@ -1,3 +1,9 @@
+// TeamResultsScreen: Displays balanced teams based on tier scores
+// - Calculates score for each player based on their tier (or fixed score if given)
+// - Shuffles and distributes players into balanced teams
+// - Shows team cards and average score
+// - Supports scrambling and WhatsApp sharing
+
 import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useRoute } from '@react-navigation/native';
@@ -5,6 +11,8 @@ import Animated, { FadeInUp, FadeIn, Layout } from 'react-native-reanimated';
 import * as Linking from 'expo-linking';
 
 function assignTierScore(player, tieredPlayers) {
+  if (player.score) return player.score;
+
   const tiers = tieredPlayers.length;
   for (let i = 0; i < tiers; i++) {
     if (tieredPlayers[i].some(p => p.id === player.id)) {
