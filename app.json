@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Hayotse",
-    "slug": "hayotse",
+    "slug": "my-new-project",
     "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,6 +12,10 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+    "androidStatusBar": {
+      "barStyle": "light-content",
+      "backgroundColor": "#18181b"
+    },
     "ios": {
       "supportsTablet": true
     },
@@ -20,7 +24,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.galrusso.mynewproject"
+      "package": "com.galrusso.hayotse"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -29,6 +33,7 @@
       "eas": {
         "projectId": "d01f132e-c3cc-4914-bba3-66224ada763f"
       }
-    }
+    },
+    "owner": "galrusso"
   }
 }
