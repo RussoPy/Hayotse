@@ -4,8 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 const COLORS = [
-  'bg-red-400', 'bg-blue-400', 'bg-green-400', 'bg-yellow-400', 'bg-purple-400',
-  'bg-pink-400', 'bg-orange-400', 'bg-teal-400', 'bg-lime-400', 'bg-amber-400',
+  'bg-red-300', 'bg-yellow-300', 'bg-green-300', 'bg-blue-300', 'bg-purple-300',
+  'bg-pink-300', 'bg-orange-300', 'bg-teal-300', 'bg-lime-300', 'bg-amber-300',
 ];
 
 export default function TierListScreen({ route }) {
@@ -63,7 +63,7 @@ export default function TierListScreen({ route }) {
     <TouchableOpacity
       key={player.key}
       onPress={() => handlePlayerPress(player, fromTier)}
-      className={`px-3 py-1 rounded-full ${player.color} shadow self-start bg-white`}
+      className={`px-3 py-1 rounded-full ${player.color} shadow self-start`}
     >
       <Text className="text-black font-medium">{player.name}</Text>
     </TouchableOpacity>
@@ -73,9 +73,11 @@ export default function TierListScreen({ route }) {
 
   return (
     <ScrollView className="flex-1 bg-zinc-900 px-4 pt-12">
-      <TouchableOpacity onPress={() => navigation.goBack()} className="mb-4">
-        <Ionicons name="arrow-back" size={26} color="white" />
-      </TouchableOpacity>
+      <View className="items-end mb-4">
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={26} color="white" />
+        </TouchableOpacity>
+      </View>
 
       <Text className="text-3xl font-bold text-amber-400 mb-2 text-center">Organize Tiers</Text>
 
@@ -93,14 +95,16 @@ export default function TierListScreen({ route }) {
       <View className="w-full space-y-4 pb-16">
         {tieredPlayers.map((tier, i) => {
           const displayTier = tierCount - i;
+          const isTopTier = i === 0;
           return (
             <View key={i} className="flex-row items-start space-x-3">
               <View className="w-6 items-center pt-2">
                 <Text className="text-white font-bold text-lg">{displayTier}</Text>
               </View>
               <View className="flex-1 flex-row flex-wrap gap-2 bg-zinc-800 min-h-[60px] px-2 py-2 rounded-xl border border-zinc-700">
+                {isTopTier && <Text className="text-xs text-gray-400 mb-1">(Highest value)</Text>}
                 {tier.length === 0 ? (
-                  <Text className="text-gray-400 italic">Drop players here</Text>
+                  <Text className="text-gray-400 italic">Drop here</Text>
                 ) : (
                   tier.map(player => renderBadge(player, i))
                 )}

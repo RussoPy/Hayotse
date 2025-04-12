@@ -5,7 +5,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 export default function TeamSetupScreen() {
   const navigation = useNavigation();
   const route = useRoute();
-  const { allPlayers = [] } = route.params;
+  const { allPlayers = [], tieredPlayers = [] } = route.params;
 
   const totalPlayers = allPlayers.length;
 
@@ -23,12 +23,11 @@ export default function TeamSetupScreen() {
   };
 
   const handleSelect = (teams, playersPerTeam) => {
-    console.log('Navigating with:', teams, playersPerTeam);
     navigation.navigate('TeamResults', {
       allPlayers,
-      numTeams: teams,
-      playersPerTeam,
-      tieredPlayers: route.params.tieredPlayers,
+      numTeams: parseInt(teams),
+      playersPerTeam: parseInt(playersPerTeam),
+      tieredPlayers,
     });
   };
 
@@ -40,7 +39,7 @@ export default function TeamSetupScreen() {
         Total players: {totalPlayers}
       </Text>
 
-      <View className="flex flex-col gap-4 items-center">
+      <View className="flex flex-col gap-4 items-center pb-16">
         {getValidTeamOptions().map((opt, i) => (
           <TouchableOpacity
             key={i}

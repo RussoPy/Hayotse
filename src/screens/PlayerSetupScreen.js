@@ -39,9 +39,19 @@ export default function PlayerSetupScreen({ navigation }) {
     setName(player.name);
   };
 
+  const isPrime = (num) => {
+    if (num < 2) return true;
+    for (let i = 2; i <= Math.sqrt(num); i++) {
+      if (num % i === 0) return false;
+    }
+    return true;
+  };
+
+  const canContinue = players.length > 0 && !isPrime(players.length);
+
   return (
     <View className="flex-1 bg-zinc-900 px-4 pt-10 pb-6">
-      <Text className="text-3xl font-bold text-white mb-6 text-center">Team Builder Setup</Text>
+      <Text className="text-3xl font-bold text-amber-400 mb-10 text-center">Adding players</Text>
 
       <View className="flex-row items-center mb-6 gap-2">
         <TextInput
@@ -59,6 +69,8 @@ export default function PlayerSetupScreen({ navigation }) {
           <Text className="text-black font-semibold">{editId ? 'Update' : 'Add'}</Text>
         </TouchableOpacity>
       </View>
+
+      <Text className="text-white text-base mb-2">({players.length})</Text>
 
       <FlatList
         data={players}
@@ -81,12 +93,9 @@ export default function PlayerSetupScreen({ navigation }) {
 
       <View className="absolute bottom-6 left-4 right-4">
         <TouchableOpacity
-          onPress={() => {
-            console.log('Navigating with players:', players);
-            navigation.navigate('TierList', { players });
-          }}
-          disabled={players.length === 0}
-          className="bg-amber-500 py-4 rounded-xl"
+          onPress={() => navigation.navigate('TierList', { players })}
+          disabled={!canContinue}
+          className={`py-4 rounded-xl ${canContinue ? 'bg-amber-500' : 'bg-zinc-700'}`}
         >
           <Text className="text-center text-black font-bold text-lg">Continue ➜</Text>
         </TouchableOpacity>
