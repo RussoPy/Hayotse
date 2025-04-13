@@ -1,32 +1,43 @@
 // TeamResultsScreen: Displays balanced teams based on tier scores
-// - Calculates score for each player based on their tier (or fixed score if given)
-// - Shuffles and distributes players into balanced teams
-// - Shows team cards and average score
-// - Supports scrambling and WhatsApp sharing
-// - Randomly assigns one player per team as goalkeeper (🧤)
-
 import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import Animated, { FadeInUp, FadeIn, Layout } from 'react-native-reanimated';
 import * as Linking from 'expo-linking';
 
+// Assign score based on tier
 function assignTierScore(player, tieredPlayers) {
-  if (player.score) return player.score;
+  const actualTierCount = tieredPlayers.length - 1;
+  const unknownTier = tieredPlayers[actualTierCount];
 
-  const isUnknownTier = tieredPlayers.length > 0 && tieredPlayers[tieredPlayers.length - 1].some(p => p.id === player.id);
-  if (isUnknownTier) {
-    const actualTierCount = tieredPlayers.length - 1;
-    return Math.floor(actualTierCount / 2) + 1;
+  if (unknownTier.some(p => p.id === player.id)) {
+    return Math.ceil(actualTierCount / 2); // Middle score for unknowns
   }
 
-  const tiers = tieredPlayers.length;
-  for (let i = 0; i < tiers; i++) {
+  for (let i = 0; i < actualTierCount; i++) {
     if (tieredPlayers[i].some(p => p.id === player.id)) {
-      return tiers - i;
+      return actualTierCount - i; // Highest tier = highest score
     }
   }
-  return 1;
+
+  return 1; // fallback
+}
+
+// Shuffle players
+function shuffleArray(array) {
+  const newArr = [...array];
+  for (let i = newArr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+  }
+  return newArr;
+}
+
+// Measure how balanced the teams are
+function getTeamVariance(teams) {
+  const averages = teams.map(t => t.totalScore / t.players.length);
+  const avg = averages.reduce((sum, val) => sum + val, 0) / averages.length;
+  return averages.reduce((sum, val) => sum + (val - avg) ** 2, 0) / averages.length;
 }
 
 export default function TeamResultsScreen() {
@@ -36,7 +47,7 @@ export default function TeamResultsScreen() {
   const [teams, setTeams] = useState([]);
   const [scrambleKey, setScrambleKey] = useState(0);
 
-  const buildBalancedTeams = (retry = 0) => {
+  const buildBalancedTeams = () => {
     const totalExpected = numTeams * playersPerTeam;
     if (allPlayers.length !== totalExpected) {
       console.warn('Invalid team config. Not building teams.');
@@ -44,35 +55,48 @@ export default function TeamResultsScreen() {
       return;
     }
 
-    const shuffled = [...allPlayers].sort(() => Math.random() - 0.5);
-    const scored = shuffled.map(p => ({ ...p, score: assignTierScore(p, tieredPlayers) }));
-    scored.sort((a, b) => b.score - a.score);
+    let bestTeams = null;
+    let bestVariance = Infinity;
 
-    const newTeams = Array.from({ length: numTeams }, () => ({ players: [], totalScore: 0 }));
-    let index = 0;
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const shuffled = shuffleArray(allPlayers);
+      const scored = shuffled.map(p => ({
+        ...p,
+        score: assignTierScore(p, tieredPlayers),
+      }));
 
-    for (const player of scored) {
-      newTeams[index % numTeams].players.push(player);
-      newTeams[index % numTeams].totalScore += player.score;
-      index++;
+      scored.sort((a, b) => b.score - a.score);
+
+      const newTeams = Array.from({ length: numTeams }, () => ({ players: [], totalScore: 0 }));
+
+      for (const player of scored) {
+        newTeams.sort((a, b) => a.totalScore - b.totalScore);
+        newTeams[0].players.push(player);
+        newTeams[0].totalScore += player.score;
+      }
+
+      const teamsWithGoalie = newTeams.map(team => {
+        const randomIndex = Math.floor(Math.random() * team.players.length);
+        return {
+          ...team,
+          goalieId: team.players[randomIndex].id,
+        };
+      });
+
+      const isBalanced = teamsWithGoalie.every(t => t.players.length === playersPerTeam);
+      if (!isBalanced) continue;
+
+      const variance = getTeamVariance(teamsWithGoalie);
+      if (variance < bestVariance) {
+        bestVariance = variance;
+        bestTeams = teamsWithGoalie;
+      }
     }
 
-    // Assign goalkeeper
-    const teamsWithGoalie = newTeams.map(team => {
-      const randomIndex = Math.floor(Math.random() * team.players.length);
-      return {
-        ...team,
-        goalieId: team.players[randomIndex].id,
-      };
-    });
-
-    const isBalanced = teamsWithGoalie.every(t => t.players.length === playersPerTeam);
-    if (isBalanced) {
-      setTeams(teamsWithGoalie);
-    } else if (retry < 5) {
-      buildBalancedTeams(retry + 1);
+    if (bestTeams) {
+      setTeams(bestTeams);
     } else {
-      console.warn('Could not balance teams after multiple attempts.');
+      console.warn('Could not generate balanced teams after multiple attempts.');
       setTeams([]);
     }
   };
@@ -116,10 +140,12 @@ export default function TeamResultsScreen() {
 
       <View className="flex flex-col gap-6 items-center pb-12" key={scrambleKey}>
         {teams.length === 0 ? (
-          <Text className="text-gray-400 italic text-center mt-12">No teams to display. Make sure players divide evenly.</Text>
+          <Text className="text-gray-400 italic text-center mt-12">
+            No teams to display. Make sure players divide evenly.
+          </Text>
         ) : (
           teams.map((team, i) => {
-            const average = team.players.reduce((sum, p) => sum + p.score, 0) / team.players.length;
+            const average = team.totalScore / team.players.length;
             return (
               <Animated.View
                 key={`${scrambleKey}-${i}`}
@@ -127,9 +153,13 @@ export default function TeamResultsScreen() {
                 layout={Layout.springify()}
                 className="bg-zinc-800 rounded-xl px-4 py-4 border border-zinc-700 w-full max-w-[320px]"
               >
-                <Text className="text-white font-bold text-lg text-center mb-1">Team {i + 1}</Text>
-                <Text className="text-sm text-gray-400 text-center mb-2">Avg Score: {average.toFixed(2)}</Text>
-                {team.players.map((player) => (
+                <Text className="text-white font-bold text-lg text-center mb-1">
+                  Team {i + 1}
+                </Text>
+                <Text className="text-sm text-gray-400 text-center mb-2">
+                  Avg Score: {average.toFixed(2)}
+                </Text>
+                {team.players.map(player => (
                   <Text key={player.id} className="text-white text-center">
                     • {player.name}{player.id === team.goalieId ? ' 🧤' : ''}
                   </Text>
