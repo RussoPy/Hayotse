@@ -1,43 +1,73 @@
-// TeamResultsScreen: Displays balanced teams based on tier scores
 import { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import Animated, { FadeInUp, FadeIn, Layout } from 'react-native-reanimated';
 import * as Linking from 'expo-linking';
 
-// Assign score based on tier
 function assignTierScore(player, tieredPlayers) {
   const actualTierCount = tieredPlayers.length - 1;
   const unknownTier = tieredPlayers[actualTierCount];
 
   if (unknownTier.some(p => p.id === player.id)) {
-    return Math.ceil(actualTierCount / 2); // Middle score for unknowns
+    return Math.ceil(actualTierCount / 2);
   }
 
   for (let i = 0; i < actualTierCount; i++) {
     if (tieredPlayers[i].some(p => p.id === player.id)) {
-      return actualTierCount - i; // Highest tier = highest score
+      return actualTierCount - i;
     }
   }
 
-  return 1; // fallback
+  return 1;
 }
 
-// Shuffle players
-function shuffleArray(array) {
-  const newArr = [...array];
-  for (let i = newArr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
-  }
-  return newArr;
+function getTeamCombinations(players, numTeams, playersPerTeam) {
+  const all = (arr, size) => {
+    if (size === 0) return [[]];
+    if (arr.length < size) return [];
+    const [first, ...rest] = arr;
+    const withFirst = all(rest, size - 1).map(g => [first, ...g]);
+    const withoutFirst = all(rest, size);
+    return [...withFirst, ...withoutFirst];
+  };
+
+  const usedIndices = new Set();
+  const results = [];
+
+  const build = (startIndex, current) => {
+    if (current.length === numTeams) {
+      const flat = current.flat();
+      if (flat.length === players.length) {
+        results.push([...current]);
+      }
+      return;
+    }
+    for (let i = startIndex; i < players.length; i++) {
+      const teamCombos = all(players.filter((_, idx) => !usedIndices.has(idx)), playersPerTeam);
+      for (let team of teamCombos) {
+        const indices = team.map(p => players.indexOf(p));
+        if (indices.some(idx => usedIndices.has(idx))) continue;
+        indices.forEach(idx => usedIndices.add(idx));
+        current.push(team);
+        build(i + 1, current);
+        current.pop();
+        indices.forEach(idx => usedIndices.delete(idx));
+      }
+    }
+  };
+
+  build(0, []);
+  return results;
 }
 
-// Measure how balanced the teams are
-function getTeamVariance(teams) {
-  const averages = teams.map(t => t.totalScore / t.players.length);
-  const avg = averages.reduce((sum, val) => sum + val, 0) / averages.length;
-  return averages.reduce((sum, val) => sum + (val - avg) ** 2, 0) / averages.length;
+function varianceOfTeams(teams) {
+  const avgs = teams.map(team => {
+    const total = team.reduce((sum, p) => sum + p.score, 0);
+    return total / team.length;
+  });
+  const min = Math.min(...avgs);
+  const max = Math.max(...avgs);
+  return max - min;
 }
 
 export default function TeamResultsScreen() {
@@ -46,58 +76,75 @@ export default function TeamResultsScreen() {
 
   const [teams, setTeams] = useState([]);
   const [scrambleKey, setScrambleKey] = useState(0);
+  const [warning, setWarning] = useState(false);
+  const [notEnoughPlayers, setNotEnoughPlayers] = useState(false);
+  const [scrambledOnce, setScrambledOnce] = useState(false);
+  const [bestCombination, setBestCombination] = useState(null);
+  const [secondBest, setSecondBest] = useState(null);
 
-  const buildBalancedTeams = () => {
+  const buildBestTeams = () => {
     const totalExpected = numTeams * playersPerTeam;
     if (allPlayers.length !== totalExpected) {
-      console.warn('Invalid team config. Not building teams.');
+      setWarning(false);
+      setNotEnoughPlayers(true);
       setTeams([]);
       return;
     }
 
-    let bestTeams = null;
-    let bestVariance = Infinity;
+    const scored = allPlayers.map(p => ({
+      ...p,
+      score: assignTierScore(p, tieredPlayers),
+    }));
 
-    for (let attempt = 0; attempt < 50; attempt++) {
-      const shuffled = shuffleArray(allPlayers);
-      const scored = shuffled.map(p => ({
-        ...p,
-        score: assignTierScore(p, tieredPlayers),
-      }));
-
-      scored.sort((a, b) => b.score - a.score);
-
-      const newTeams = Array.from({ length: numTeams }, () => ({ players: [], totalScore: 0 }));
-
-      for (const player of scored) {
-        newTeams.sort((a, b) => a.totalScore - b.totalScore);
-        newTeams[0].players.push(player);
-        newTeams[0].totalScore += player.score;
-      }
-
-      const teamsWithGoalie = newTeams.map(team => {
-        const randomIndex = Math.floor(Math.random() * team.players.length);
-        return {
-          ...team,
-          goalieId: team.players[randomIndex].id,
-        };
-      });
-
-      const isBalanced = teamsWithGoalie.every(t => t.players.length === playersPerTeam);
-      if (!isBalanced) continue;
-
-      const variance = getTeamVariance(teamsWithGoalie);
-      if (variance < bestVariance) {
-        bestVariance = variance;
-        bestTeams = teamsWithGoalie;
-      }
+    const combinations = getTeamCombinations(scored, numTeams, playersPerTeam);
+    if (combinations.length === 0) {
+      setWarning(false);
+      setNotEnoughPlayers(true);
+      setTeams([]);
+      return;
     }
 
-    if (bestTeams) {
-      setTeams(bestTeams);
-    } else {
-      console.warn('Could not generate balanced teams after multiple attempts.');
-      setTeams([]);
+    const sortedCombos = combinations
+      .map(combo => ({
+        combo,
+        variance: varianceOfTeams(combo),
+      }))
+      .sort((a, b) => a.variance - b.variance);
+
+    const best = sortedCombos[0];
+    const second = sortedCombos[1];
+
+    const bestTeamsWithGoalie = best.combo.map(team => {
+      const randomIndex = Math.floor(Math.random() * team.length);
+      return {
+        players: team,
+        totalScore: team.reduce((sum, p) => sum + p.score, 0),
+        goalieId: team[randomIndex]?.id,
+      };
+    });
+
+    setWarning(best.variance > 1.25);
+    setNotEnoughPlayers(false);
+    setTeams(bestTeamsWithGoalie);
+    setBestCombination(bestTeamsWithGoalie);
+
+    if (second) {
+      const secondWithGoalie = second.combo.map(team => {
+        const randomIndex = Math.floor(Math.random() * team.length);
+        return {
+          players: team,
+          totalScore: team.reduce((sum, p) => sum + p.score, 0),
+          goalieId: team[randomIndex]?.id,
+        };
+      });
+      setSecondBest(secondWithGoalie);
+    }
+  };
+
+  const handleScramble = () => {
+    if (!scrambledOnce && secondBest) {
+      setScrambledOnce(true);
+      setTeams(secondBest);
     }
   };
 
@@ -114,38 +161,56 @@ export default function TeamResultsScreen() {
   };
 
   useEffect(() => {
-    buildBalancedTeams();
+    buildBestTeams();
   }, []);
 
   return (
     <ScrollView className="flex-1 bg-zinc-900 px-4 pt-12 pb-16">
       <Animated.Text
         entering={FadeInUp.duration(600)}
-        className="text-3xl font-bold text-amber-400 mb-6 text-center"
+        className="text-3xl font-bold text-amber-400 mb-4 text-center"
       >
         Balanced Teams
       </Animated.Text>
 
+      {notEnoughPlayers && (
+        <View className="bg-red-500/20 border border-red-400 px-4 py-2 rounded-xl mb-4 mx-4">
+          <Text className="text-red-300 text-center font-semibold">
+            ⚠️ Not enough players to form the desired number of teams with equal size.
+          </Text>
+        </View>
+      )}
+
+      {warning && !notEnoughPlayers && (
+        <View className="bg-yellow-500/20 border border-yellow-400 px-4 py-2 rounded-xl mb-4 mx-4">
+          <Text className="text-yellow-300 text-center font-semibold">
+            ⚠️ Teams might not be fully balanced due to player distribution.
+          </Text>
+        </View>
+      )}
+
       <Animated.View entering={FadeIn.duration(400)} className="items-center">
         <TouchableOpacity
-          onPress={() => {
-            buildBalancedTeams();
-            setScrambleKey(prev => prev + 1);
-          }}
-          className="bg-amber-400 mb-4 py-2 px-6 rounded-xl"
+          disabled={notEnoughPlayers || scrambledOnce}
+          onPress={handleScramble}
+          className={`mb-4 py-2 px-6 rounded-xl ${
+            notEnoughPlayers || scrambledOnce ? 'bg-zinc-600' : 'bg-amber-400'
+          }`}
         >
-          <Text className="text-black font-bold text-center">Scramble Teams</Text>
+          <Text className={`font-bold text-center ${notEnoughPlayers || scrambledOnce ? 'text-gray-400' : 'text-black'}`}>
+            Scramble Teams
+          </Text>
         </TouchableOpacity>
       </Animated.View>
 
       <View className="flex flex-col gap-6 items-center pb-12" key={scrambleKey}>
-        {teams.length === 0 ? (
+        {teams.length === 0 && !notEnoughPlayers ? (
           <Text className="text-gray-400 italic text-center mt-12">
-            No teams to display. Make sure players divide evenly.
+            No teams to display.
           </Text>
         ) : (
           teams.map((team, i) => {
-            const average = team.totalScore / team.players.length;
+            const average = team.players.length > 0 ? team.totalScore / team.players.length : 0;
             return (
               <Animated.View
                 key={`${scrambleKey}-${i}`}

@@ -127,8 +127,9 @@ export default function PlayerSetupScreen({ navigation }) {
 
       <View className="flex-row items-center mb-4 gap-2">
         <TextInput
+          maxLength={16}
           className="flex-1 bg-white text-black rounded-xl px-4 py-2"
-          placeholder="Enter player name"
+          placeholder="Name..."
           placeholderTextColor="#aaa"
           value={name}
           onChangeText={setName}

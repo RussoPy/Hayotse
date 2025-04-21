@@ -96,6 +96,7 @@ export default function TierListScreen({ route }) {
         <Text className="text-black font-bold">Switch to {tierCount === 5 ? '10' : '5'} Tiers</Text>
       </TouchableOpacity>
 
+      <Text className="text-amber-400 text-center text-base font-semibold italic mb-2">Tap to add</Text>
       <View className="w-full bg-zinc-800 p-3 rounded-xl border border-zinc-700 min-h-[70px] flex-row flex-wrap gap-2 mb-6">
         {unassigned.map(player => renderBadge(player))}
       </View>
@@ -103,19 +104,21 @@ export default function TierListScreen({ route }) {
       <View className="w-full space-y-4 pb-16">
         {tieredPlayers.map((tier, i) => {
           const isTopTier = i === 0;
+          const isBottomTier = i === tierCount - 1;
           const isUnknownTier = i === tierCount;
-          const displayTier = isUnknownTier ? '?' : tierCount - i;
+          const displayTier = isUnknownTier ? '?' : `${tierCount - i}`;
 
           return (
             <View key={i} className="flex-row items-start space-x-3">
               <View className="w-6 items-center pt-2">
-                <Text className="text-white font-bold text-lg">{displayTier}</Text>
+                <Text className="text-white font-bold text-lg leading-none text-center whitespace-nowrap">{displayTier}</Text>
               </View>
               <View className="flex-1 flex-row flex-wrap gap-2 bg-zinc-800 min-h-[60px] px-2 py-2 rounded-xl border border-zinc-700">
                 {isTopTier && <Text className="text-xs text-gray-400 mb-1">(Highest value)</Text>}
+                {isBottomTier && <Text className="text-xs text-gray-400 mb-1">(Lowest value)</Text>}
                 {isUnknownTier && <Text className="text-xs text-gray-400 mb-1">(Uncertain value)</Text>}
                 {tier.length === 0 ? (
-                  <Text className="text-gray-400 italic">Drop here</Text>
+                  <Text className="text-gray-400 italic">Empty</Text>
                 ) : (
                   tier.map(player => renderBadge(player, i))
                 )}
