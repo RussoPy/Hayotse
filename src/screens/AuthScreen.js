@@ -16,7 +16,7 @@ export default function AuthScreen() {
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [emailConfirm, setEmailConfirm] = useState('');
   const [isRegister, setIsRegister] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
 
@@ -27,7 +27,6 @@ export default function AuthScreen() {
       if (savedEmail && savedPassword) {
         setEmail(savedEmail);
         setPassword(savedPassword);
-        setRememberMe(true);
       }
     };
     loadCredentials();
@@ -111,9 +110,17 @@ export default function AuthScreen() {
           marginBottom: 12,
         }}
       />
-      <Text className="text-3xl font-bold text-center text-amber-400 mb-8">
-        {isRegister ? 'Register' : 'Login'}
-      </Text>
+    <Text
+  style={{
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 30, // equivalent to text-3xl
+    textAlign: 'center',
+    color: '#fbbf24', // amber-400
+    marginBottom: 32, // mb-8
+  }}
+>
+  {isRegister ? 'Register' : 'Hayotse'}
+</Text>
 
       <TextInput
         placeholder="Email"

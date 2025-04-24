@@ -34,6 +34,9 @@
         "projectId": "d01f132e-c3cc-4914-bba3-66224ada763f"
       }
     },
-    "owner": "galrusso"
+    "owner": "galrusso",
+    "plugins": [
+      "expo-font"
+    ]
   }
 }
