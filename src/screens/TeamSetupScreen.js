@@ -1,7 +1,8 @@
-/*TeamSetupScreen.js*/ 
+/* TeamSetupScreen.js */
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function TeamSetupScreen() {
   const navigation = useNavigation();
@@ -26,15 +27,24 @@ export default function TeamSetupScreen() {
   const handleSelect = (teams, playersPerTeam) => {
     navigation.navigate('TeamResults', {
       allPlayers,
-      numTeams: parseInt(teams),
-      playersPerTeam: parseInt(playersPerTeam),
+      numTeams: parseInt(teams, 10),
+      playersPerTeam: parseInt(playersPerTeam, 10),
       tieredPlayers,
     });
   };
 
   return (
     <ScrollView className="flex-1 bg-zinc-900 px-4 pt-16">
-      <Text className="text-3xl font-bold text-amber-400 mb-6 text-center">Choose a Team Option</Text>
+      {/* ← Back button */}
+      <View className="absolute left-4 top-16 z-10">
+        <TouchableOpacity onPress={() => navigation.goBack()} className="p-2">
+          <Ionicons name="chevron-back" size={28} color="white" />
+        </TouchableOpacity>
+      </View>
+
+      <Text className="text-3xl font-bold text-amber-400 mb-6 text-center">
+        Choose a Team Option
+      </Text>
 
       <Text className="text-gray-400 text-base mb-4 text-center">
         Total players: {totalPlayers}

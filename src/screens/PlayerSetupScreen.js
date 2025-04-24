@@ -26,7 +26,6 @@ export default function PlayerSetupScreen({ navigation }) {
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
-
       if (user && !user.isAnonymous) {
         const userRef = ref(db, `users/${user.uid}/players`);
         try {
@@ -40,10 +39,8 @@ export default function PlayerSetupScreen({ navigation }) {
           console.warn('Error loading players:', err.message);
         }
       }
-
-      setLoadedFromDB(true); // always allow UI after auth known
+      setLoadedFromDB(true);
     });
-
     return () => unsub();
   }, []);
 
@@ -57,36 +54,30 @@ export default function PlayerSetupScreen({ navigation }) {
 
   const addOrEditPlayer = () => {
     if (!name.trim()) return;
-
     if (editId) {
       setPlayers((prev) => prev.map(p => p.id === editId ? { ...p, name } : p));
       setEditId(null);
     } else {
-      const newPlayer = {
-        id: Date.now().toString(),
-        name: name.trim(),
-        color: COLORS[players.length % COLORS.length],
-        key: Date.now().toString(),
-      };
-      setPlayers(prev => [...prev, newPlayer]);
+      const id = Date.now().toString();
+      setPlayers(prev => [
+        ...prev,
+        { id, name: name.trim(), color: COLORS[prev.length % COLORS.length], key: id },
+      ]);
     }
-
     setName('');
   };
 
   const addUnknownPlayer = () => {
     const count = players.filter(p => p.name.startsWith('Unknown')).length + 1;
-    const newPlayer = {
-      id: Date.now().toString(),
-      name: `Unknown ${count}`,
-      color: COLORS[players.length % COLORS.length],
-      key: Date.now().toString(),
-    };
-    setPlayers(prev => [...prev, newPlayer]);
+    const id = Date.now().toString();
+    setPlayers(prev => [
+      ...prev,
+      { id, name: `Unknown ${count}`, color: COLORS[prev.length % COLORS.length], key: id },
+    ]);
   };
 
   const removePlayer = (id) => {
-    setPlayers((prev) => prev.filter(p => p.id !== id));
+    setPlayers(prev => prev.filter(p => p.id !== id));
     if (editId === id) setEditId(null);
   };
 
@@ -98,7 +89,7 @@ export default function PlayerSetupScreen({ navigation }) {
   const handleLogout = async () => {
     try {
       await signOut(auth);
-    } catch (err) {
+    } catch {
       Toast.show({ type: 'error', text1: 'Logout failed' });
     }
   };
@@ -174,13 +165,16 @@ export default function PlayerSetupScreen({ navigation }) {
         )}
       />
 
+      {/* Continue Button */}
       <View className="absolute bottom-6 left-4 right-4">
         <TouchableOpacity
           onPress={() => navigation.navigate('TierList', { players })}
           disabled={!canContinue}
           className={`py-4 rounded-xl ${canContinue ? 'bg-amber-500' : 'bg-zinc-700'}`}
         >
-          <Text className="text-center text-black font-bold text-lg">Continue ➜</Text>
+          <Text className="text-center text-black font-bold text-lg">
+            {canContinue ? 'Continue ➜' : 'Not enough players'}
+          </Text>
         </TouchableOpacity>
       </View>
 
